@@ -9,7 +9,12 @@ mod context;
 mod data;
 mod hasher;
 
-pub use better_any::tid;
+/// Re-export public API.
+pub use better_any::*;
+
+/// Re-export the main `Context` type.
 pub use context::*;
+
+/// Re-export internal modules for users who need advanced features.
 pub use data::*;
 pub use hasher::*;

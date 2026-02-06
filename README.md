@@ -111,4 +111,4 @@ fn main() {
 
 ## License
 
-Licensed under the MIT OR Apache-2.0 license.
+Licensed under the MIT

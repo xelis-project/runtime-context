@@ -1,11 +1,15 @@
 [package]
 name = "runtime-context"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2024"
 authors = ["Slixe <slixeprivate@gmail.com>"]
 description = "A runtime context providing type storage and management."
 license = "MIT"
 keywords = ["runtime", "context", "type"]
+
+repository = "https://github.com/xelis-project/runtime-context"
+homepage = "https://github.com/xelis-project/runtime-context"
+readme = "README.md"
 
 [dependencies]
 better_any = "0.2.1"
