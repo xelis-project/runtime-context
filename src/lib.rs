@@ -5,11 +5,11 @@
 //! [`better_any`](https://crates.io/crates/better_any) and uses an optimized
 //! `TypeId` hasher for fast lookups.
 
+mod context;
 mod data;
 mod hasher;
-mod context;
 
+pub use better_any::tid;
+pub use context::*;
 pub use data::*;
 pub use hasher::*;
-pub use context::*;
-pub use better_any::tid;

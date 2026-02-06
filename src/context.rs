@@ -1,5 +1,5 @@
-use std::any::TypeId;
 use super::{Data, ShareableTid, TypeMap};
+use std::any::TypeId;
 
 /// Runtime context storing values by type.
 ///
@@ -55,13 +55,15 @@ impl<'ty, 'r> Context<'ty, 'r> {
     /// Get a shared reference to a stored value by type.
     #[inline]
     pub fn get<'b, T: ShareableTid<'ty>>(&'b self) -> Option<&'b T> {
-        self.data.get(&T::id()).map(|v| v.downcast_ref()).flatten()
+        self.data.get(&T::id()).and_then(|v| v.downcast_ref())
     }
 
     /// Get a mutable reference to a stored value by type.
     #[inline]
     pub fn get_mut<'b, T: ShareableTid<'ty>>(&'b mut self) -> Option<&'b mut T> {
-        self.data.get_mut(&T::id()).map(|v| v.downcast_mut()).flatten()
+        self.data
+            .get_mut(&T::id())
+            .and_then(|v| v.downcast_mut())
     }
 
     /// Get a stored `Data` by `TypeId`.
@@ -78,7 +80,10 @@ impl<'ty, 'r> Context<'ty, 'r> {
 
     /// Get multiple mutable `Data` entries by distinct `TypeId`s.
     #[inline]
-    pub fn get_disjoint_mut<'b, const N: usize>(&'b mut self, keys: [&TypeId; N]) -> [Option<&'b mut Data<'ty, 'r>>; N] {
+    pub fn get_disjoint_mut<'b, const N: usize>(
+        &'b mut self,
+        keys: [&TypeId; N],
+    ) -> [Option<&'b mut Data<'ty, 'r>>; N] {
         self.data.get_disjoint_mut(keys)
     }
 
@@ -113,7 +118,7 @@ impl<'ty, 'r> Context<'ty, 'r> {
 
 #[cfg(test)]
 mod tests {
-    use better_any::{tid, Tid};
+    use better_any::{Tid, tid};
 
     use super::*;
 
@@ -185,7 +190,8 @@ mod tests {
         context.insert(FooWrapper(&mut dummy));
 
         fn inner_ref_fn<T: Foo + 'static>(context: &Context) {
-            let data = context.get_data(&FooWrapper::<T>::id())
+            let data = context
+                .get_data(&FooWrapper::<T>::id())
                 .expect("Data not found");
             data.downcast_ref::<FooWrapper<T>>()
                 .expect("Downcast failed")
@@ -196,7 +202,8 @@ mod tests {
         inner_ref_fn::<Dummy>(&context);
 
         fn inner_mut_fn<T: Foo + 'static>(context: &mut Context) {
-            let data = context.get_data_mut(&FooWrapper::<T>::id())
+            let data = context
+                .get_data_mut(&FooWrapper::<T>::id())
                 .expect("Data not found");
             data.downcast_mut::<FooWrapper<T>>()
                 .expect("Downcast failed")

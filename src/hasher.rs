@@ -1,4 +1,8 @@
-use std::{any::TypeId, collections::HashMap, hash::{BuildHasherDefault, Hasher}};
+use std::{
+    any::TypeId,
+    collections::HashMap,
+    hash::{BuildHasherDefault, Hasher},
+};
 
 /// A hasher for `TypeId`s that takes advantage of its known characteristics.
 #[derive(Debug, Default)]

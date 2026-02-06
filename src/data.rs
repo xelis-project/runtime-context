@@ -69,7 +69,6 @@ impl<'ty, 'r> Data<'ty, 'r> {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use better_any::tid;
