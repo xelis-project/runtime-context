@@ -99,6 +99,8 @@ fn main() {
 
 - `Context::insert`, `Context::insert_ref`, `Context::insert_mut` — insert values
 - `Context::get`, `Context::get_mut` — retrieve typed values
+- `Context::get_or_insert(value)` — insert an owned value if absent and return `&mut T`; panics if the existing entry is immutable or has a mismatched type
+- `Context::get_or_insert_with(|| value)` — like `get_or_insert`, but calls the closure only if the entry is absent
 - `Context::get_data`, `Context::get_data_mut` — retrieve by `TypeId`
 - `Context::take` — remove and return an owned value
 - `Context::remove` — remove a stored `Data`

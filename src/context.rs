@@ -78,6 +78,39 @@ impl<'ty, 'r> Context<'ty, 'r> {
         self.data.get_mut(&T::id()).and_then(|v| v.downcast_mut())
     }
 
+    /// Get a mutable reference to a stored value, inserting `value` if absent.
+    ///
+    /// The inserted value is owned by the context. Existing owned values and
+    /// mutable references are preserved.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the existing entry is an immutable reference or contains a
+    /// different type (for example, after using `insert_unchecked`).
+    #[inline]
+    pub fn get_or_insert<T: ShareableTid<'ty>>(&mut self, value: T) -> &mut T {
+        self.get_or_insert_with(|| value)
+    }
+
+    /// Get a mutable reference to a stored value, calling `f` to insert if absent.
+    ///
+    /// The closure is called only when the type has no entry. The inserted value
+    /// is owned by the context. Existing owned values and mutable references
+    /// are preserved.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the existing entry is an immutable reference or contains a
+    /// different type (for example, after using `insert_unchecked`).
+    #[inline]
+    pub fn get_or_insert_with<T: ShareableTid<'ty>, F: FnOnce() -> T>(&mut self, f: F) -> &mut T {
+        self.data
+            .entry(T::id())
+            .or_insert_with(|| Data::Owned(Box::new(f())))
+            .downcast_mut()
+            .expect("stored entry cannot be mutably accessed as the requested type")
+    }
+
     /// Get a stored `Data` by `TypeId`.
     #[inline]
     pub fn get_data<'b>(&'b self, id: &TypeId) -> Option<&'b Data<'ty, 'r>> {
@@ -169,6 +202,129 @@ mod tests {
         assert!(matches!(context.get::<Dummy>(), Some(_)));
         assert!(matches!(context.get_mut::<Dummy>(), Some(_)));
         assert_eq!(context.contains::<Dummy>(), true);
+    }
+
+    #[test]
+    fn test_get_or_insert_absent() {
+        let text = String::from("Hello");
+        let mut context = Context::new();
+
+        let value = context.get_or_insert(Dummy(&text));
+        assert_eq!(value.0, "Hello");
+        value.0 = "Updated";
+
+        assert_eq!(context.len(), 1);
+        assert_eq!(context.take::<Dummy>(), Some(Dummy("Updated")));
+    }
+
+    #[test]
+    fn test_get_or_insert_owned() {
+        let mut context = Context::new();
+        context.insert(Dummy("Existing"));
+
+        let value = context.get_or_insert(Dummy("Replacement"));
+        assert_eq!(value.0, "Existing");
+        value.0 = "Updated";
+
+        assert_eq!(context.len(), 1);
+        assert_eq!(context.get::<Dummy>(), Some(&Dummy("Updated")));
+    }
+
+    #[test]
+    fn test_get_or_insert_mut() {
+        let mut dummy = Dummy("Existing");
+        {
+            let mut context = Context::new();
+            context.insert_mut(&mut dummy);
+
+            let value = context.get_or_insert(Dummy("Replacement"));
+            assert_eq!(value.0, "Existing");
+            value.0 = "Updated";
+        }
+
+        assert_eq!(dummy.0, "Updated");
+    }
+
+    #[test]
+    fn test_get_or_insert_ref_panics_without_replacing() {
+        let dummy = Dummy("Existing");
+        let mut context = Context::new();
+        context.insert_ref(&dummy);
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            context.get_or_insert(Dummy("Replacement"));
+        }));
+
+        assert!(result.is_err());
+        assert_eq!(context.get::<Dummy>(), Some(&dummy));
+        assert!(context.get_mut::<Dummy>().is_none());
+    }
+
+    #[test]
+    #[should_panic(expected = "stored entry cannot be mutably accessed as the requested type")]
+    fn test_get_or_insert_wrong_type() {
+        struct Other;
+        tid!(Other);
+
+        let mut context = Context::new();
+        context.insert_unchecked(Dummy::id(), Data::Owned(Box::new(Other)));
+        context.get_or_insert(Dummy("Replacement"));
+    }
+
+    #[test]
+    fn test_get_or_insert_with_absent() {
+        let text = String::from("Hello");
+        let dummy = Box::new(Dummy(&text));
+        let mut calls = 0;
+        let mut context = Context::new();
+
+        let value = context.get_or_insert_with(|| {
+            calls += 1;
+            *dummy
+        });
+        assert_eq!(value.0, "Hello");
+        value.0 = "Updated";
+
+        assert_eq!(calls, 1);
+        assert_eq!(context.take::<Dummy>(), Some(Dummy("Updated")));
+    }
+
+    #[test]
+    fn test_get_or_insert_with_existing() {
+        let mut dummy = Dummy("Borrowed");
+        let mut context = Context::new();
+        context.insert(Dummy("Owned"));
+
+        let value = context.get_or_insert_with::<Dummy, _>(|| panic!("must not run"));
+        assert_eq!(value.0, "Owned");
+        value.0 = "Updated owned";
+        assert_eq!(context.get::<Dummy>(), Some(&Dummy("Updated owned")));
+
+        context.insert_mut(&mut dummy);
+        let value = context.get_or_insert_with::<Dummy, _>(|| panic!("must not run"));
+        assert_eq!(value.0, "Borrowed");
+        value.0 = "Updated borrowed";
+        drop(context);
+        assert_eq!(dummy.0, "Updated borrowed");
+    }
+
+    #[test]
+    fn test_get_or_insert_with_immutable_does_not_call_closure() {
+        let dummy = Dummy("Existing");
+        let mut context = Context::new();
+        context.insert_ref(&dummy);
+        let mut called = false;
+
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            context.get_or_insert_with(|| {
+                called = true;
+                Dummy("Replacement")
+            });
+        }));
+
+        assert!(result.is_err());
+        assert!(!called);
+        assert_eq!(context.get::<Dummy>(), Some(&dummy));
     }
 
     #[test]
