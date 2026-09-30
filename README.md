@@ -102,6 +102,8 @@ fn main() {
 - `Context::get_data`, `Context::get_data_mut` — retrieve by `TypeId`
 - `Context::take` — remove and return an owned value
 - `Context::remove` — remove a stored `Data`
+- `Context::len` — return the number of stored entries
+- `Context::merge` — consume another context, overwriting entries with matching keys
 
 ## Safety and Notes
 

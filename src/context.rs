@@ -26,6 +26,20 @@ impl<'ty, 'r> Context<'ty, 'r> {
         }
     }
 
+    /// Return the number of stored entries.
+    #[inline]
+    pub fn len(&self) -> usize {
+        self.data.len()
+    }
+
+    /// Extend the context with another context, consuming it.
+    ///
+    /// Entries from `other` overwrite existing entries with the same `TypeId`.
+    #[inline]
+    pub fn extend(&mut self, other: Self) {
+        self.data.extend(other.data);
+    }
+
     /// Insert a value into the context without checking the type.
     ///
     /// This is a low-level escape hatch for advanced use-cases.
@@ -61,9 +75,7 @@ impl<'ty, 'r> Context<'ty, 'r> {
     /// Get a mutable reference to a stored value by type.
     #[inline]
     pub fn get_mut<'b, T: ShareableTid<'ty>>(&'b mut self) -> Option<&'b mut T> {
-        self.data
-            .get_mut(&T::id())
-            .and_then(|v| v.downcast_mut())
+        self.data.get_mut(&T::id()).and_then(|v| v.downcast_mut())
     }
 
     /// Get a stored `Data` by `TypeId`.
