@@ -1,6 +1,6 @@
 [package]
 name = "runtime-context"
-version = "0.1.2"
+version = "0.1.3"
 edition = "2024"
 authors = ["Slixe <slixeprivate@gmail.com>"]
 description = "A runtime context providing type storage and management."
